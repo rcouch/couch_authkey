@@ -1,0 +1,16 @@
+{application, couch_authkey,
+ [
+  {description, "Key authentication handler"},
+  {vsn, "1"},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  lager,
+                  crypto,
+                  public_key,
+                  sasl,
+                  ssl,
+                  couch,
+                  couch_httpd
+                 ]}
+ ]}.
