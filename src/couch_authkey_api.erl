@@ -11,7 +11,7 @@
 get_key(Key) when is_list(Key) ->
     get_key(?l2b(Key));
 get_key(Key) ->
-    case binary:split(Key, <<".">>) of
+    case binary:split(Key, <<",">>) of
         [DbName, Key1] ->
             get_key(DbName, Key1);
         _ ->
@@ -19,11 +19,9 @@ get_key(Key) ->
     end.
 
 get_key(DbName, Key) ->
-    {ok, Db0} = couch_authkey_util:ensure_exists(DbName),
-    ok = ensure_ddoc_exists(Db0, ?DNAME),
-    {ok, Db} = couch_db:reopen(Db0),
+    {ok, Db} = open_db(DbName),
     try
-        KeyProps = get_key_props(Db, ?DNAME, Key),
+        KeyProps = get_key_props(Db#db.name, ?DNAME, Key),
         validate_key_props(KeyProps)
     after
         couch_db:close(Db)
@@ -55,6 +53,15 @@ validate_key_props(KeyProps) ->
                   " is used for authentication purposes.">>
             })
         end.
+
+open_db(DbName) ->
+    Options1 = [sys, {user_ctx, #user_ctx{roles=[<<"_admin">>]}}],
+    {ok, Db} = case couch_db:open(DbName, Options1) of
+        {ok, Db0} -> {ok, Db0};
+        _Error -> couch_db:create(DbName, Options1)
+    end,
+    ok = ensure_ddoc_exists(Db, ?DNAME),
+    {ok, Db}.
 
 ensure_ddoc_exists(Db, DDocId) ->
     case couch_db:open_doc(Db, DDocId) of
