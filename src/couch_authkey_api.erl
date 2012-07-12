@@ -19,13 +19,9 @@ get_key(Key) ->
     end.
 
 get_key(DbName, Key) ->
-    {ok, Db} = open_db(DbName),
-    try
-        KeyProps = get_key_props(Db#db.name, ?DNAME, Key),
-        validate_key_props(KeyProps)
-    after
-        couch_db:close(Db)
-    end.
+    ok = ensure_exists(DbName),
+    KeyProps = get_key_props(DbName, ?DNAME, Key),
+    validate_key_props(KeyProps).
 
 %% internal functions
 
@@ -54,14 +50,15 @@ validate_key_props(KeyProps) ->
             })
         end.
 
-open_db(DbName) ->
+ensure_exists(DbName) ->
     Options1 = [sys, {user_ctx, #user_ctx{roles=[<<"_admin">>]}}],
     {ok, Db} = case couch_db:open(DbName, Options1) of
         {ok, Db0} -> {ok, Db0};
         _Error -> couch_db:create(DbName, Options1)
     end,
     ok = ensure_ddoc_exists(Db, ?DNAME),
-    {ok, Db}.
+    couch_db:close(Db),
+    ok.
 
 ensure_ddoc_exists(Db, DDocId) ->
     case couch_db:open_doc(Db, DDocId) of
